@@ -1,0 +1,4 @@
+Usage: 
+
+./train [train file] (modelFile)
+./predict [testData] [modelFile]
