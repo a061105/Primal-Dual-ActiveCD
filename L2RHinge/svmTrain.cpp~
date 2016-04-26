@@ -4,6 +4,7 @@
 #include<vector>
 #include<string>
 #include<cmath>
+#include <omp.h>
 
 using namespace std;
 
@@ -92,9 +93,8 @@ int main(int argc, char** argv){
 		for(int r=0;r<N;r++){
 			
 			int i = index[r];
-			
 			double yi = data->at(i)->yi;
-			
+			//compute gradient of i 
 			double gi = yi*dot(v,data->at(i)->xi) - 1.0;
 			
 			double new_alpha = min( max( alpha[i] - gi/Qii[i] , 0.0 ) , C);

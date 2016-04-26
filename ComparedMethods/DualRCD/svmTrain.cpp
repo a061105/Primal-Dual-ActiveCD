@@ -55,8 +55,8 @@ int main(int argc, char** argv){
 	char* trainFile = argv[1];
 	double lambda = atof(argv[2]);
 	char* modelFile;
-	if( argc >= 3 )
-		modelFile = argv[2];
+	if( argc > 1+2 )
+		modelFile = argv[3];
 	else{
 		modelFile = "model";
 	}
@@ -110,23 +110,24 @@ int main(int argc, char** argv){
 			int i = index[r];
 			
 			double yi = data->at(i)->yi;
+			//1. compute gradient
 			double gi = yi*dot(w,data->at(i)->xi) - 1.0 + alpha[i];
-			
+			//2. compute new alpha
 			double new_alpha = min( max( alpha[i] - gi/Qii[i] , 0.0 ) , C);
-			
+			//3. maintain w and v
 			double alpha_diff = new_alpha-alpha[i];
 			if(  fabs(alpha_diff) > 1e-5 ){
 				
 				Instance* ins = data->at(i);
-				int index;
+				int ind;
 				double value;
 				for(int k=0;k<ins->xi.size();k++){
 					
-					index = ins->xi[k].first;
+					ind = ins->xi[k].first;
 					value = ins->xi[k].second;
 					
-					v[index] += alpha_diff * (yi*value);
-					w[index] = prox_l1( v[index], lambda );
+					v[ind] += alpha_diff * (yi*value);
+					w[ind] = prox_l1( v[ind], lambda );
 				}
 				
 				alpha[i] = new_alpha;

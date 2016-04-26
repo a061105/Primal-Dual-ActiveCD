@@ -93,13 +93,12 @@ int main(int argc, char** argv){
 		for(int r=0;r<N;r++){
 			
 			int i = index[r];
-			
 			double yi = data->at(i)->yi;
-			
+			//1. compute gradient of i 
 			double gi = yi*dot(v,data->at(i)->xi) - 1.0;
-			
+			//2. compute alpha_new
 			double new_alpha = min( max( alpha[i] - gi/Qii[i] , 0.0 ) , C);
-			
+			//3. maintain v (=w)
 			double alpha_diff = new_alpha-alpha[i];
 			if(  fabs(alpha_diff) > 1e-5 ){
 				
