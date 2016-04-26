@@ -1,5 +1,6 @@
 #include "util.h"
 #include "Parser.h"
+#include <omp.h>
 
 void search_a_active( double* w, deque<int>& w_act_index, vector<SparseVec*>& Xt, 
 		double* alpha,  vector<int>& a_ind_new, int num_select, int N ){
@@ -100,7 +101,7 @@ int main(int argc, char** argv){
 	}
 	
 	double C = 1.0;
-	double lambda = 1.0;
+	double lambda = 0.1;
 	int D;
 	vector<SparseVec*> X;
 	vector<SparseVec*> Xt;//X transpose
@@ -166,15 +167,21 @@ int main(int argc, char** argv){
 	
 	
 	//Main Loop
-	int num_select = 1;
-	int max_iter = 300;
+	int num_select = 30;
+	int max_iter = 30;
 	vector<int> w_ind_new, a_ind_new;
 	for(int iter=0; iter<max_iter; iter++){
 		
 		//search new active samples and features
+		double sa_time = -omp_get_wtime();
 		search_a_active( w, w_act_index, Xt, alpha,    a_ind_new, num_select, N );
+		sa_time += omp_get_wtime();
+		
+		double sw_time = -omp_get_wtime();
 		search_w_active( alpha, a_act_index, X, lambda, w,    w_ind_new, num_select, D );
-
+		sw_time += omp_get_wtime();
+		
+		double buildXact_time = -omp_get_wtime();
 		for(vector<int>::iterator it=a_ind_new.begin(); it!=a_ind_new.end(); it++)
 			a_act_index.push_front(*it);
 		for(vector<int>::iterator it=w_ind_new.begin(); it!=w_ind_new.end(); it++)
@@ -186,8 +193,10 @@ int main(int argc, char** argv){
 			for(SparseVec::iterator it2=xj->begin(); it2!=xj->end(); it2++) // add to X_act
 				X_act[it2->first]->insert(make_pair(j, it2->second));
 		}
-
+		buildXact_time += omp_get_wtime();
+		
 		//maintain relation of w_j, v_j and alpha for j in w_ind_new (minimize Lagrangian w.r.t. w_j given alpha)
+		double updateAct_time = - omp_get_wtime();
 		for(vector<int>::iterator it=w_ind_new.begin(); it!=w_ind_new.end(); it++){
 			int j = *it;
 			v[j] = 0.0;
@@ -219,6 +228,7 @@ int main(int argc, char** argv){
 				alpha[i] = new_alpha;
 			}
 		}
+		updateAct_time += omp_get_wtime();
 		
 		//Shrink active set of alpha (for alpha_i=0)
 		deque<int> tmp;
@@ -239,7 +249,7 @@ int main(int argc, char** argv){
 		}
 		w_act_index = tmp;
 		
-		cerr << "i=" << iter << ", |act_a|=" << a_act_index.size() << ", |act_w|=" << w_act_index.size() << endl;
+		cerr << "i=" << iter << ", |act_a|=" << a_act_index.size() << ", |act_w|=" << w_act_index.size() << ", sa=" << sa_time << ", sw=" << sw_time << ", build=" << buildXact_time << ", update=" << updateAct_time <<   endl;
 		
 		random_shuffle(a_act_index.begin(), a_act_index.end());
 		if(iter%1==0)
@@ -247,6 +257,9 @@ int main(int argc, char** argv){
 	}
 	cerr << endl;
 	
+	cerr << "w_nnz=" << w_act_index.size() << endl;
+	cerr << "alpha_nnz=" << a_act_index.size() << endl;
+
 	//output model
 	ofstream fout(modelFile);
 	fout << D << " " << w_act_index.size() << endl;

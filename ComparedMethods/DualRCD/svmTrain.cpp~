@@ -36,12 +36,13 @@ double dot( double* v, vector<pair<int,double> >& x ){
 int main(int argc, char** argv){
 
 	
-	if( argc < 2 ){
-		cerr << "Usage: svmTrain [train file] (modelFile)\n";
+	if( argc < 1+2 ){
+		cerr << "Usage: svmTrain [train file] [lambda] (modelFile)\n";
 		exit(0);
 	}
 	
 	char* trainFile = argv[1];
+	double lambda = atof(argv[2]);
 	char* modelFile;
 	if( argc >= 3 )
 		modelFile = argv[2];
@@ -58,10 +59,13 @@ int main(int argc, char** argv){
 	cerr << "D=" << D << endl;
 	//initialization
 	double* v = new double[D];
+	double* w = new double[D];
 	double* alpha = new double[N];
 	
 	for(int i=0;i<D;i++)
 		v[i] = 0;
+	for(int i=0;i<D;i++)
+		w[i] = 0;
 	for(int i=0;i<N;i++){
 		alpha[i] = 0;
 	}
@@ -95,8 +99,7 @@ int main(int argc, char** argv){
 			int i = index[r];
 			
 			double yi = data->at(i)->yi;
-			
-			double gi = yi*dot(v,data->at(i)->xi) - 1.0;
+			double gi = yi*dot(w,data->at(i)->xi) - 1.0 + alpha[i];
 			
 			double new_alpha = min( max( alpha[i] - gi/Qii[i] , 0.0 ) , C);
 			
@@ -112,6 +115,7 @@ int main(int argc, char** argv){
 					value = ins->xi[k].second;
 					
 					v[index] += alpha_diff * (yi*value);
+					w[index] = prox_l1( v[index], lambda );
 				}
 				
 				alpha[i] = new_alpha;
@@ -129,7 +133,7 @@ int main(int argc, char** argv){
 	
 	int nnz=0;
 	for(int j=0;j<D;j++){
-		if( fabs(v[j]) > 1e-12 )
+		if( fabs(w[j]) > 1e-12 )
 			nnz++;
 	}
 	cerr << "w_nnz=" << nnz << endl;
@@ -145,7 +149,7 @@ int main(int argc, char** argv){
 	ofstream fout(modelFile);
 	fout << D << " " << nnz << endl;
 	for(int i=0;i<D;i++)
-		if( fabs(v[i]) > 1e-12 )
-			fout << i << " " << v[i] << endl;
+		if( fabs(w[i]) > 1e-12 )
+			fout << i << " " << w[i] << endl;
 	fout.close();
 }

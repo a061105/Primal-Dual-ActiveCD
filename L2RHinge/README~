@@ -1,0 +1,4 @@
+Usage: 
+
+./svrTrain [train file] (modelFile)
+./svrPredict [testData] [modelFile]

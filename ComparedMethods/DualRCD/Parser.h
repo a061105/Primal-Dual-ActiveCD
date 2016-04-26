@@ -1,4 +1,5 @@
 
+#include"Instance.h"
 #include<stdio.h>
 #include<stdlib.h>
 #include<fstream>
@@ -6,17 +7,16 @@
 #include<map>
 #include<iostream>
 #include<cstring>
-#include "util.h"
+
 
 using namespace std;
 
-
-const int MAX_LINE = 1000000000;
+const int MAX_LINE = 10000000;
 
 class Parser{
 	
 	public:
-	static  void  parseSVM(char* fileName, int& numFea, vector<SparseVec*>& X, vector<double>& labels){
+	static  vector< Instance* >*  parseSVM(char* fileName, int& numFea){
 		
 		ifstream fin(fileName);
 		if( fin.fail() ){
@@ -24,13 +24,14 @@ class Parser{
 			exit(0);
 		}
 		
-		labels.clear();
+		vector< Instance* >* data = new vector< Instance* >();
+		
 		char* line = new char[MAX_LINE];
 		vector<string> tokens;
 		numFea=0;
 		while( !fin.eof() ){
 			
-			SparseVec* xi = new SparseVec();
+			Instance* ins = new Instance();
 			
 			fin.getline(line,MAX_LINE);
 			string str = string(line);
@@ -39,9 +40,8 @@ class Parser{
 				continue;
 
 			//yi
-			double label = atof(tokens[0].c_str());
-			labels.push_back(label);
-			
+			ins->yi = atof(tokens[0].c_str());
+
 			//xi
 			for(int i=1;i<tokens.size();i++){
 				
@@ -49,20 +49,20 @@ class Parser{
 				pair<int,double> pair;
 				pair.first = atoi(pv[0].c_str());
 				pair.second = atof(pv[1].c_str());
-				xi->push_back(pair);
+				ins->xi.push_back(pair);
 			}
 			//cerr << "fea="<< ins->xi.back().second << endl;
 			//cerr << data->size() << ", " << ins->xi.size() <<  endl;
-			if( xi->size()>0 && xi->back().first > numFea )
-				numFea = xi->back().first;
+			if( ins->xi.size()>0 && ins->xi.back().first > numFea )
+				numFea = ins->xi.back().first;
 			
-			X.push_back( xi );
+			data->push_back( ins );
 		}
 		
 		//data->pop_back();
 		numFea++;
-
 		delete[] line;
+		return data;
 	}
 
 	static vector<string> split(string str, string pattern){
