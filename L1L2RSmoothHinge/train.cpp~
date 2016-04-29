@@ -84,6 +84,23 @@ void search_w_active( double* alpha, deque<int>& a_act_index, vector<SparseVec*>
 	delete[] Xta;
 }
 
+double objective(double* w, int D, double* alpha, int N){
+	
+	double obj = 0.0;
+	for(int i=0;i<D;i++)
+		obj += w[i]*w[i];
+	obj /= 2.0;
+
+	for(int i=0;i<N;i++)
+		obj -= alpha[i];
+
+	for(int i=0;i<N;i++){
+		obj += alpha[i]*alpha[i]/2.0;
+	}
+
+	return obj;
+}
+
 int main(int argc, char** argv){
 
 	
@@ -101,7 +118,7 @@ int main(int argc, char** argv){
 	}
 	
 	double C = 1.0;
-	double lambda = 0.1;
+	double lambda = 1.0;
 	int D;
 	vector<SparseVec*> X;
 	vector<SparseVec*> Xt;//X transpose
@@ -168,7 +185,7 @@ int main(int argc, char** argv){
 	
 	//Main Loop
 	int num_select = 30;
-	int max_iter = 30;
+	int max_iter = 100000;
 	vector<int> w_ind_new, a_ind_new;
 	for(int iter=0; iter<max_iter; iter++){
 		
@@ -249,7 +266,9 @@ int main(int argc, char** argv){
 		}
 		w_act_index = tmp;
 		
-		cerr << "i=" << iter << ", |act_a|=" << a_act_index.size() << ", |act_w|=" << w_act_index.size() << ", sa=" << sa_time << ", sw=" << sw_time << ", build=" << buildXact_time << ", update=" << updateAct_time <<   endl;
+		//cerr << "i=" << iter << ", |act_a|=" << a_act_index.size() << ", |act_w|=" << w_act_index.size() << ", sa=" << sa_time << ", sw=" << sw_time << ", build=" << buildXact_time << ", update=" << updateAct_time <<   endl;
+		if(iter%10==0)
+			cerr << "i=" << iter << ", |act_a|=" << a_act_index.size() << ", |act_w|=" << w_act_index.size() << ", obj=" << objective(w,D,alpha,N) << endl;
 		
 		random_shuffle(a_act_index.begin(), a_act_index.end());
 		if(iter%1==0)
