@@ -1,0 +1,6 @@
+stochastic primal-dual coordinate method for smoothed hinge loss, L1+L2 regularization.
+
+Usage: 
+
+./svrTrain [train file] (modelFile)
+./svrPredict [testData] [modelFile]
