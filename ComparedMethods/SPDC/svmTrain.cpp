@@ -94,11 +94,6 @@ int main(int argc, char** argv){
 	else{
 		modelFile = "model";
 	}
-
-	double tau = 1;
-	double sigma = 1;
-	double theta = 0.01;
-
 	
 	double C = 1.0;
 	int D;
@@ -114,12 +109,33 @@ int main(int argc, char** argv){
 	double* u = new double[D];
 	double* x_bar = new double[D];
 	double* alpha = new double[N];
+
+	double R = 0.0;
+	for(int i = 0; i < N; i++) {
+		SparseVec xi = data->at(i)->xi;
+		double norm = 0.0;
+		for (int k = 0; k < xi.size(); k++){	
+			double value = xi[k].second;
+			norm += value * value;
+		}
+		if (R < sqrt(norm)) {
+			R = sqrt(norm);
+		}
+	}
+
+	double tau = 1.0 / (R * sqrt(N));
+	double sigma = 1.0 / R * sqrt(N);
+	double theta = 1.0 - 1.0 / (double(N) + R * sqrt(N));
+	cout << "tau: " << tau << endl;
+	cout << "sigma: " << sigma << endl;
+	cout << "theta: " << theta << endl;
 	
 	for(int i=0;i<D;i++) {
 		v[i] = 0;
 		u[i] = 0;
 		x_bar[i] = 0;
 	}
+	
 	for(int i=0;i<N;i++){
 		alpha[i] = 0;
 	}
