@@ -156,9 +156,9 @@ int main(int argc, char** argv){
 		alpha[i] = 0.0;
 	
 	//X_act stores only active features
-	vector<HashVec*> X_act;
+	vector<SparseVec*> X_act;
 	for(int i=0;i<N;i++)
-		X_act.push_back(new HashVec());
+		X_act.push_back(new SparseVec());
 	
 	//Compute diagonal of XX^T matrix
 	double* Qii = new double[N];
@@ -214,12 +214,12 @@ int main(int argc, char** argv){
 			w_is_act[*it] = 1;
 		}
 		//update X_act based on w_ind_new
-		/*for(vector<int>::iterator it=w_ind_new.begin(); it!=w_ind_new.end(); it++){
+		for(vector<int>::iterator it=w_ind_new.begin(); it!=w_ind_new.end(); it++){
 			int j = *it;
 			SparseVec* xj = Xt[j]; // j-th column of X
 			for(SparseVec::iterator it2=xj->begin(); it2!=xj->end(); it2++) // add to X_act
-				X_act[it2->first]->insert(make_pair(j, it2->second));
-		}*/
+				X_act[it2->first]->push_back(make_pair(j, it2->second));
+		}
 		buildXact_time += omp_get_wtime();
 		
 		//maintain relation of w_j, v_j and alpha for j in w_ind_new (minimize Lagrangian w.r.t. w_j given alpha)
@@ -235,12 +235,11 @@ int main(int argc, char** argv){
 		/*Solve w.r.t. Active Set (w,alpha) using dual coordinate descent:  
 		 * min_a ||prox_{lambda}(X'*a)||^2/2 - 1'a  + ||a||^2/2
 		 */
-		for(int inner=0;inner<8;inner++){
+		for(int inner=0;inner<20;inner++){
 			for(deque<int>::iterator it=a_act_index.begin(); it!=a_act_index.end(); it++){
 
 				int i = *it;
-				//HashVec* xi = X_act[i];
-				SparseVec* xi = X[i];
+				SparseVec* xi = X_act[i];
 
 				//compute gradient
 				double gi = dot(w, xi) - 1.0 + mu*alpha[i];//alpha[i] due to "smooth" hinge loss
@@ -252,8 +251,6 @@ int main(int argc, char** argv){
 
 					//for(HashVec::iterator it=xi->begin(); it!=xi->end(); it++){
 					for(SparseVec::iterator it=xi->begin(); it!=xi->end(); it++){
-						if( !w_is_act[it->first] )
-							continue;
 						v[it->first] += alpha_diff * it->second;
 						w[it->first] = prox_l1( v[it->first], lambda );
 					}
@@ -271,7 +268,7 @@ int main(int argc, char** argv){
 				tmp.push_back(*it);
 		a_act_index = tmp;
 		//Srhink active set of w (for w_j=0)
-		tmp.clear();
+		/*tmp.clear();
 		for(deque<int>::iterator it=w_act_index.begin(); it!=w_act_index.end(); it++){
 			if( w[*it] != 0.0 )
 				tmp.push_back(*it);
@@ -279,10 +276,11 @@ int main(int argc, char** argv){
 				//remove from X_act
 				//for(int i=0;i<N;i++)
 				//	X_act[i]->erase(*it);
-				w_is_act[*it] = 0;
+				//w_is_act[*it] = 0;
 			}	
 		}
 		w_act_index = tmp;
+		*/
 		buildXact_time += omp_get_wtime();
 		
 		overall_time = sa_time + sw_time + buildXact_time + updateAct_time;
