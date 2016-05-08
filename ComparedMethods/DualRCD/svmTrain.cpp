@@ -80,22 +80,22 @@ double primal_objective(double* w, int D, vector<Instance*>& data, double lambda
 	return obj;
 }
 
-double dual_objective(double* w, int D, double* alpha, int N, double lambda2, double mu){
+/*double dual_objective(double* w, int D, double* alpha, int N, double lambda2_input, double mu){
 	
 	double obj = 0.0;
 	for(int i=0;i<D;i++)
 		obj += w[i]*w[i];
-	obj *= lambda2/(2.0*N);
+	obj *= 1.0/2.0;
 	
 	for(int i=0;i<N;i++)
-		obj -= alpha[i]/N;
+		obj -= alpha[i];
 
-	for(int i=0;i<N;i++){
-		obj += mu*alpha[i]*alpha[i]/(2.0*N);
-	}
-
+	for(int i=0;i<N;i++)
+		obj += mu*alpha[i]*alpha[i]/2.0;
+	
+	obj *= 1.0/N/lambda2_input;
 	return obj;
-}
+}*/
 
 int nnz(double* v, int size){
 	
@@ -115,8 +115,8 @@ int main(int argc, char** argv){
 	}
 	
 	char* trainFile = argv[1];
-	double lambda = atof(argv[2]);
-	double lambda2 = atof(argv[3]);
+	double lambda_input = atof(argv[2]);
+	double lambda2_input = atof(argv[3]);
 	double mu = atof(argv[4]);
 	
 	char* modelFile;
@@ -126,8 +126,8 @@ int main(int argc, char** argv){
 		modelFile = "model";
 	}
 
-	double C = 1.0/lambda2;
-	lambda = lambda/lambda2;
+	double C = 1.0/lambda2_input;
+	double lambda = lambda_input/lambda2_input;
 	
 	int D;
 	int N;
@@ -168,7 +168,7 @@ int main(int argc, char** argv){
 		index.push_back(i);
 	shuffle(index);
 
-	int max_iter = 100;
+	int max_iter = 1000;
 	int iter=0;
 	double overall_time = 0.0;
 	while(iter < max_iter){
@@ -205,7 +205,7 @@ int main(int argc, char** argv){
 		overall_time += omp_get_wtime();
 		
 		//if(iter%10==0)
-		cerr << "iter=" << iter << ", nnz_a=" << nnz(alpha,N) << ", nnz_w=" << nnz(w,D) << ", d-obj=" << dual_objective(w,D,alpha,N,lambda2,mu) << ", p-obj=" << primal_objective(w,D, *data, lambda2, lambda, mu) << ", time=" << overall_time << endl;
+		cerr << "iter=" << iter << ", nnz_a=" << nnz(alpha,N) << ", nnz_w=" << nnz(w,D) << ", p-obj=" << primal_objective(w,D, *data, lambda2_input, lambda_input, mu) << ", time=" << overall_time << endl;
 		
 		shuffle(index);
 		iter++;
