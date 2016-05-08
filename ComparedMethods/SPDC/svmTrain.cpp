@@ -53,28 +53,63 @@ double prox_l1( double v, double lambda ){
 	return 0.0;
 }
 
-double objective(double* w, int D, double* alpha, int N){
+// double objective(double* w, int D, double* alpha, int N){
 	
-	double obj = 0.0;
-	for(int i=0;i<D;i++)
-		obj += w[i]*w[i];
-	obj /= 2.0;
+// 	double obj = 0.0;
+// 	for(int i=0;i<D;i++)
+// 		obj += w[i]*w[i];
+// 	obj /= 2.0;
 	
-	cout << "primal: " << obj << endl;
-	double tmp = obj;
+// 	cout << "primal: " << obj << endl;
+// 	double tmp = obj;
 	
-	for(int i=0;i<N;i++)
-		obj -= alpha[i];
+// 	for(int i=0;i<N;i++)
+// 		obj -= alpha[i];
 
-	cout << "second: " << obj-tmp << endl;
-	tmp = obj;
+// 	cout << "second: " << obj-tmp << endl;
+// 	tmp = obj;
 	
-	for(int i=0;i<N;i++){
-		obj += alpha[i]*alpha[i]/2.0;
+// 	for(int i=0;i<N;i++){
+// 		obj += alpha[i]*alpha[i]/2.0;
+// 	}
+
+// 	cout << "third: " << obj-tmp << endl;
+// 	return obj;
+// }
+
+double smooth_hinge_loss(double z, double mu) {
+	if (z > mu) {
+		return 0;
+	} else if (z < 1.0 - mu) {
+		return 1.0 - z - 0.5*mu;
+	} 
+	return 0.5 / mu * (1.0 - z) * (1.0 - z);
+}
+
+double primal_objective(vector<Instance*>* data, double* w, int D, double* alpha, int N, 
+						double mu, double lambda, double lambda_2){
+	
+	double loss = 0.0;
+	for(int i = 0; i < N; i++) {
+		SparseVec xi = data->at(i)->xi;
+		double yi = data->at(i)->yi;
+		loss += smooth_hinge_loss(dot(w, xi) * yi, mu);
 	}
+	loss /= N;
 
-	cout << "third: " << obj-tmp << endl;
-	return obj;
+	double obj_l2 = 0.0;
+	for(int i = 0; i < D; i++) {
+		obj_l2 +=  w[i]*w[i];
+	}
+	obj_l2 *= 0.5 * lambda_2;
+
+	double obj_l1 = 0.0;
+	for(int i = 0; i < D; i++) {
+		obj_l1 += fabs(w[i]);
+	}
+	obj_l1 *= lambda;
+
+	return loss + obj_l1 + obj_l2;
 }
 
 int nnz(double* v, int size){
@@ -102,7 +137,6 @@ int main(int argc, char** argv){
 		modelFile = "model";
 	}
 	
-	double C = 1.0;
 	int D;
 	int N;
 	vector<Instance*>* data =  Parser::parseSVM(trainFile,D);
@@ -134,11 +168,16 @@ int main(int argc, char** argv){
 	double sigma = 0.5 / R * sqrt(N);
 	double theta = 1.0 - 1.0 / (double(N) + R * sqrt(N));
 
-	lambda /= N;
+	lambda /= N; // L1 regularization constant
+	double lambda_2 = 1.0 / N; // L2 regularization constant
+	double mu = 1.0;
+
 	cout << "tau: " << tau << endl;
 	cout << "sigma: " << sigma << endl;
 	cout << "theta: " << theta << endl;
 	cout << "lambda: " << lambda << endl;
+	cout << "lambda_2: " << lambda_2 << endl;
+	cout << "mu: " << mu << endl;
 	
 	for(int i=0;i<D;i++) {
 		v[i] = 0;
@@ -180,16 +219,16 @@ int main(int argc, char** argv){
 			alpha[i] = new_alpha;
 			// update primal
 			for (int j = 0; j < D; ++j) {
-				v_new[j] = (v[j] / tau - u[j]) / (1.0/N + 1.0/tau);
+				v_new[j] = (v[j] / tau - u[j]) / (lambda_2 + 1.0/tau);
 			}
 			for (int k = 0; k < xi.size(); k++){
 				
 				int idx = xi[k].first;
 				double value = xi[k].second;
 				
-				v_new[idx] -= alpha_diff * value / (1.0/N + 1.0/tau);
+				v_new[idx] -= alpha_diff * value / (lambda_2 + 1.0/tau);
 			}
-			double threshold = lambda / (1.0/N + 1.0/tau);
+			double threshold = lambda / (lambda_2 + 1.0/tau);
 			for (int j = 0; j < D; ++j) {
 				v_new[j] = prox_l1( v_new[j], threshold);
 			}
@@ -215,7 +254,7 @@ int main(int argc, char** argv){
 		nnz_v = nnz(v, D);
 		cerr << "iter=" << iter << ", nnz_a=" << nnz(alpha, N) 
 		                        << ", nnz_v=" << nnz_v
-		                        << ", obj=" << objective(v, D, alpha, N) 
+		                        << ", obj=" << primal_objective(data, v, D, alpha, N, mu, lambda, lambda_2) 
 		                        << ", time=" << update_time << endl ;
 		
 		shuffle(index);
