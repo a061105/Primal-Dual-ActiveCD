@@ -32,14 +32,14 @@ double dot( double* v, vector<pair<int,double> >& x ){
 	return sum;
 }
 
-double dot( double* v1, double* v2, int n ){
+// double dot( double* v1, double* v2, int n ){
 	
-	double sum=0.0;
-	for(int i = 0; i < n; ++i){
-		sum += v1[i] * v2[i];
-	}
-	return sum;
-}
+// 	double sum=0.0;
+// 	for(int i = 0; i < n; ++i){
+// 		sum += v1[i] * v2[i];
+// 	}
+// 	return sum;
+// }
 
 double prox_l1( double v, double lambda ){
 	
@@ -59,14 +59,21 @@ double objective(double* w, int D, double* alpha, int N){
 	for(int i=0;i<D;i++)
 		obj += w[i]*w[i];
 	obj /= 2.0;
-
+	
+	cout << "primal: " << obj << endl;
+	double tmp = obj;
+	
 	for(int i=0;i<N;i++)
 		obj -= alpha[i];
 
+	cout << "second: " << obj-tmp << endl;
+	tmp = obj;
+	
 	for(int i=0;i<N;i++){
 		obj += alpha[i]*alpha[i]/2.0;
 	}
 
+	cout << "third: " << obj-tmp << endl;
 	return obj;
 }
 
@@ -123,8 +130,8 @@ int main(int argc, char** argv){
 		}
 	}
 
-	double tau = 1.0 / (R * sqrt(N));
-	double sigma = 1.0 / R * sqrt(N);
+	double tau = 0.5 / (R * sqrt(N));
+	double sigma = 0.5 / R * sqrt(N);
 	double theta = 1.0 - 1.0 / (double(N) + R * sqrt(N));
 	cout << "tau: " << tau << endl;
 	cout << "sigma: " << sigma << endl;
@@ -159,7 +166,7 @@ int main(int argc, char** argv){
 			double yi = data->at(i)->yi;
 			
 			// update dual
-			double new_alpha = (yi - dot(v, x_bar, D) - (alpha[i] / sigma)) / (1.0 - (1.0/sigma));
+			double new_alpha = (yi - dot(x_bar, xi) - (alpha[i] / sigma)) / (-1.0 - (1.0/sigma));
 			if (yi > 0) {
 				new_alpha = min( max( new_alpha, -1.0 ) , 0.0);
 			} else {
@@ -167,7 +174,6 @@ int main(int argc, char** argv){
 			}
 			double alpha_diff = new_alpha-alpha[i];
 			alpha[i] = new_alpha;
-
 			// update primal
 			for (int j = 0; j < D; ++j) {
 				v_new[j] = (v[j] / tau - u[j]) / (1.0 + 1.0/tau);
@@ -185,7 +191,7 @@ int main(int argc, char** argv){
 			}
 
 			// maintain u
-			for (int k = 0; k < xi.size(); k++){
+			for (int k = 0; k < xi.size(); ++k){
 				
 				int idx = xi[k].first;
 				double value = xi[k].second;
