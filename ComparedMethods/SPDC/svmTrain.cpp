@@ -133,9 +133,12 @@ int main(int argc, char** argv){
 	double tau = 0.5 / (R * sqrt(N));
 	double sigma = 0.5 / R * sqrt(N);
 	double theta = 1.0 - 1.0 / (double(N) + R * sqrt(N));
+
+	lambda /= N;
 	cout << "tau: " << tau << endl;
 	cout << "sigma: " << sigma << endl;
 	cout << "theta: " << theta << endl;
+	cout << "lambda: " << lambda << endl;
 	
 	for(int i=0;i<D;i++) {
 		v[i] = 0;
@@ -154,8 +157,9 @@ int main(int argc, char** argv){
 	}
 	shuffle(index);
 
-	int max_iter = 100;
+	int max_iter = 1000;
 	int iter = 0;
+	double nnz_v = 0.0;
 	while(iter < max_iter){
 		
 		double update_time = -omp_get_wtime();
@@ -176,16 +180,16 @@ int main(int argc, char** argv){
 			alpha[i] = new_alpha;
 			// update primal
 			for (int j = 0; j < D; ++j) {
-				v_new[j] = (v[j] / tau - u[j]) / (1.0 + 1.0/tau);
+				v_new[j] = (v[j] / tau - u[j]) / (1.0/N + 1.0/tau);
 			}
 			for (int k = 0; k < xi.size(); k++){
 				
 				int idx = xi[k].first;
 				double value = xi[k].second;
 				
-				v_new[idx] -= alpha_diff * value / (1.0 + 1.0/tau);
+				v_new[idx] -= alpha_diff * value / (1.0/N + 1.0/tau);
 			}
-			double threshold = lambda / (1.0 + 1.0/tau);
+			double threshold = lambda / (1.0/N + 1.0/tau);
 			for (int j = 0; j < D; ++j) {
 				v_new[j] = prox_l1( v_new[j], threshold);
 			}
@@ -208,8 +212,9 @@ int main(int argc, char** argv){
 		update_time += omp_get_wtime();
 
 		//if(iter%10==0)
+		nnz_v = nnz(v, D);
 		cerr << "iter=" << iter << ", nnz_a=" << nnz(alpha, N) 
-		                        << ", nnz_v=" << nnz(v, D) 
+		                        << ", nnz_v=" << nnz_v
 		                        << ", obj=" << objective(v, D, alpha, N) 
 		                        << ", time=" << update_time << endl ;
 		
@@ -220,7 +225,7 @@ int main(int argc, char** argv){
 
 	//output model
 	ofstream fout(modelFile);
-	fout << D << " " << nnz << endl;
+	fout << D << " " << nnz_v << endl;
 	for(int i=0;i<D;i++)
 		if( fabs(v[i]) > 1e-12 )
 			fout << i << " " << v[i] << endl;
