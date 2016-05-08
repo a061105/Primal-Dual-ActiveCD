@@ -43,18 +43,55 @@ double prox_l1( double v, double lambda ){
 	return 0.0;
 }
 
-double objective(double* w, int D, double* alpha, int N){
+double loss(double yz, double mu){
+	
+	if( yz > 1.0 ){
+		return 0.0;
+	}else if( yz < 1-mu ){
+		return 1.0 - yz - mu/2.0;
+	}else{
+		double tmp = 1.0-yz;
+		
+		return tmp*tmp/2.0/mu;
+	}
+}
+
+double primal_objective(double* w, int D, vector<Instance*>& data, double lambda2, double lambda, double mu){
+	
+	int N = data.size();
+	double obj = 0.0;
+	for(int i=0;i<N;i++){
+		double yi = data[i]->yi;
+		double yz_i = yi*dot( w, data[i]->xi );
+		obj += loss(yz_i, mu);
+	}
+	obj /= N;
+
+	double norm2 = 0.0;
+	for(int i=0;i<D;i++)
+		norm2 += w[i]*w[i];
+	obj += norm2*lambda2/N/2.0;
+
+	double norm1 = 0.0;
+	for(int i=0;i<D;i++)
+		norm1 += fabs(w[i]);
+	obj += norm1*lambda/N;
+
+	return obj;
+}
+
+double dual_objective(double* w, int D, double* alpha, int N, double lambda2, double mu){
 	
 	double obj = 0.0;
 	for(int i=0;i<D;i++)
 		obj += w[i]*w[i];
-	obj /= 2.0;
-
+	obj *= lambda2/(2.0*N);
+	
 	for(int i=0;i<N;i++)
-		obj -= alpha[i];
+		obj -= alpha[i]/N;
 
 	for(int i=0;i<N;i++){
-		obj += alpha[i]*alpha[i]/2.0;
+		obj += mu*alpha[i]*alpha[i]/(2.0*N);
 	}
 
 	return obj;
@@ -72,21 +109,26 @@ int nnz(double* v, int size){
 int main(int argc, char** argv){
 
 	
-	if( argc < 1+2 ){
-		cerr << "Usage: svmTrain [train file] [lambda] (modelFile)\n";
+	if( argc < 1+4 ){
+		cerr << "Usage: svmTrain [train file] [lambda] [lambda2] [mu] (modelFile)\n";
 		exit(0);
 	}
 	
 	char* trainFile = argv[1];
 	double lambda = atof(argv[2]);
+	double lambda2 = atof(argv[3]);
+	double mu = atof(argv[4]);
+	
 	char* modelFile;
-	if( argc > 1+2 )
-		modelFile = argv[3];
+	if( argc >= 1+4 )
+		modelFile = argv[5];
 	else{
 		modelFile = "model";
 	}
+
+	double C = 1.0/lambda2;
+	lambda = lambda/lambda2;
 	
-	double C = 1.0;
 	int D;
 	int N;
 	vector<Instance*>* data =  Parser::parseSVM(trainFile,D);
@@ -117,6 +159,7 @@ int main(int argc, char** argv){
 			double value = ins->xi[j].second;
 			Qii[i] += value*value;
 		}
+		Qii[i] += mu;
 	}
 	
 	//Main Loop
@@ -125,18 +168,19 @@ int main(int argc, char** argv){
 		index.push_back(i);
 	shuffle(index);
 
-	int max_iter = 10000;
+	int max_iter = 100;
 	int iter=0;
+	double overall_time = 0.0;
 	while(iter < max_iter){
 		
-		double update_time = -omp_get_wtime();
+		overall_time -= omp_get_wtime();
 		for(int r=0;r<N;r++){
 			
 			int i = index[r];
 			
 			double yi = data->at(i)->yi;
 			//1. compute gradient
-			double gi = yi*dot(w,data->at(i)->xi) - 1.0 + alpha[i];
+			double gi = yi*dot(w,data->at(i)->xi) - 1.0 + mu*alpha[i];
 			//2. compute new alpha
 			double new_alpha = min( max( alpha[i] - gi/Qii[i] , 0.0 ) , C);
 			//3. maintain w and v
@@ -158,10 +202,10 @@ int main(int argc, char** argv){
 				alpha[i] = new_alpha;
 			}
 		}
-		update_time += omp_get_wtime();
-
+		overall_time += omp_get_wtime();
+		
 		//if(iter%10==0)
-		cerr << "iter=" << iter << ", nnz_w=" << nnz(w,D) << ", nnz_a=" << nnz(alpha,N) << ", obj=" << objective(w,D,alpha,N) << ", time=" << update_time << endl ;
+		cerr << "iter=" << iter << ", nnz_a=" << nnz(alpha,N) << ", nnz_w=" << nnz(w,D) << ", d-obj=" << dual_objective(w,D,alpha,N,lambda2,mu) << ", p-obj=" << primal_objective(w,D,data, lambda2, lambda, mu) << ", time=" << overall_time << endl;
 		
 		shuffle(index);
 		iter++;
