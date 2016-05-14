@@ -166,7 +166,7 @@ int main(int argc, char** argv){
 		index.push_back(i);
 	shuffle(index);
 
-	int max_iter = 10000;
+	int max_iter = 1000;
 	int iter=0;
 	double overall_time = 0.0;
 	while(iter < max_iter){
