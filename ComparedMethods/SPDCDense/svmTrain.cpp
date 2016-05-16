@@ -324,6 +324,8 @@ int main(int argc, char** argv){
 				int idx = xi[k].first;
 				double value = xi[k].second;
 				v_new[idx] -= alpha_diff * value / (lambda_2 + 1.0/tau);
+				// cout << idx << "->" << endl;			
+
 			}
 			
 			double threshold = lambda / (lambda_2 + 1.0/tau);
@@ -344,7 +346,9 @@ int main(int argc, char** argv){
 			for (int j = 0; j < D; ++j) {
 				x_bar[j] = v_new[j] + theta * (v_new[j] - v[j]);
 				v[j] = v_new[j];
+				// cout << v[j] << endl;
 			}
+			// cout << endl;
 
 			// for (int k = 0; k < xi.size(); k++){
 			// 	int idx = xi[k].first;
