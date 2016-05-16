@@ -123,7 +123,7 @@ int get_t_pos(double v_old, double u_old, int from, int to, double lambda, doubl
 	double threshold = log(1.0 + lambda_2 * v_old / (u_old + lambda)) / log(1.0 + lambda_2 * tau);
 	while (from - to >= threshold) {
 		from--;
-		cout << from << endl;
+		// cout << from << endl;
 	}
 	assert(from >= to);
 	// cout << "pos" << t_old << ", " << from << endl;
@@ -133,9 +133,10 @@ int get_t_pos(double v_old, double u_old, int from, int to, double lambda, doubl
 
 int get_t_neg(double v_old, double u_old, int from, int to, double lambda, double lambda_2, double tau) {
 
-	while (from - to >= log(1.0 + lambda_2 * v_old / (u_old - lambda)) / log(1.0 + lambda_2 * tau)) {
+	double threshold = log(1.0 + lambda_2 * v_old / (u_old - lambda)) / log(1.0 + lambda_2 * tau);
+	while (from - to >= threshold) {
 		from--;
-		cout << from << endl;
+		// cout << from << endl;
 	}
 	assert(from >= to);
 	// cout << "neg" << from << endl;
@@ -146,10 +147,9 @@ int get_t_neg(double v_old, double u_old, int from, int to, double lambda, doubl
 double get_v_recurse(double vj, double u_old, int repeat, 
 					 double lambda, double lambda_2, double tau) {
 
+	double threshold = lambda / (lambda_2 + 1.0/tau);
 	for (int i = 0; i < repeat; ++i) {
-		vj = 1.0 / (1.0 + lambda_2 * tau) * (vj - tau * u_old);
-		
-		double threshold = lambda / (lambda_2 + 1.0/tau);
+		vj = (1.0 / (1.0 + lambda_2 * tau)) * (vj - tau * u_old);
 		vj = prox_l1(vj, threshold);
 		// cout << vj << endl;
 	}
@@ -161,7 +161,7 @@ double lazy_update(double v_old, double u_old, int iter, int t_old,
 	// cout << "iter" << iter << ", t_old" << t_old << endl;
 	double t1;
 	if (v_old == 0.0) {
-		t1 = get_term1(lambda_2, tau, iter - t_old);
+		t1 = get_term1(lambda_2, tau, iter - t_old - 1);
 		if (-u_old > lambda) {
 			return t1 * (u_old + lambda) / lambda_2 - (u_old + lambda) / lambda_2;
 		} else if (-u_old < -lambda){
@@ -172,13 +172,13 @@ double lazy_update(double v_old, double u_old, int iter, int t_old,
 
 	} else if (v_old > 0.0) {
 		if (-u_old >= lambda) {
-			t1 = get_term1(lambda_2, tau, iter - t_old);
+			t1 = get_term1(lambda_2, tau, iter - t_old - 1);
 		} else {
-			int t_pos = get_t_pos(v_old, u_old, iter + 1, t_old + 1, lambda, lambda_2, tau);
-			if (t_pos == iter + 1) {
+			int t_pos = get_t_pos(v_old, u_old, iter, t_old + 1, lambda, lambda_2, tau);
+			if (t_pos == iter) {
 				t1 = get_term1(lambda_2, tau, t_pos - t_old - 1);
 			} else {
-				double new_v_old = get_v_recurse(v_old, u_old, t_pos - t_old + 1, lambda, lambda_2, tau);
+				double new_v_old = get_v_recurse(v_old, u_old, t_pos - t_old, lambda, lambda_2, tau);/////
 				// cout << "pos: " <<  new_v_old << endl;
 				return lazy_update(new_v_old, u_old, iter, t_pos, lambda, lambda_2, tau);
 			}
@@ -188,13 +188,13 @@ double lazy_update(double v_old, double u_old, int iter, int t_old,
 
 	} else {
 		if (-u_old <= -lambda) {
-			t1 = get_term1(lambda_2, tau, iter - t_old);
+			t1 = get_term1(lambda_2, tau, iter - t_old - 1);
 		} else {
-			int t_neg = get_t_neg(v_old, u_old, iter + 1, t_old + 1, lambda, lambda_2, tau);
-			if (t_neg == iter + 1) {
+			int t_neg = get_t_neg(v_old, u_old, iter, t_old + 1, lambda, lambda_2, tau);
+			if (t_neg == iter) {
 				t1 = get_term1(lambda_2, tau, t_neg - t_old - 1);
 			}else {
-				double new_v_old = get_v_recurse(v_old, u_old, t_neg - t_old + 1, lambda, lambda_2, tau);
+				double new_v_old = get_v_recurse(v_old, u_old, t_neg - t_old, lambda, lambda_2, tau);////
 				// cout << "neg: " << new_v_old << endl;
 				// cout << v_old << endl;
 				return lazy_update(new_v_old, u_old, iter, t_neg, lambda, lambda_2, tau);
@@ -318,18 +318,20 @@ int main(int argc, char** argv){
 			// for (int j = 0; j < D; ++j) {
 			// 	v_new[j] = (v[j] / tau - u[j]) / (lambda_2 + 1.0/tau);
 			// }
+			double threshold = lambda / (lambda_2 + 1.0/tau);
 			for (int k = 0; k < xi.size(); k++){
 				
 				int idx = xi[k].first;
 				double value = xi[k].second;
-				v_new[idx] = lazy_update(v[idx], u[idx], iter, last_t[idx], lambda, lambda_2, tau);
-				last_t[idx] = iter;
-				// v_new[idx] -= alpha_diff * value / (lambda_2 + 1.0/tau);
+				if (iter - last_t[idx] > 1) {
+					v_new[idx] = lazy_update(v[idx], u[idx], iter, last_t[idx], lambda, lambda_2, tau);
+				}
+
+				last_t[idx] = iter;				
+				v_new[idx] = (v_new[idx] / tau - u[idx]) / (lambda_2 + 1.0/tau);
+				v_new[idx] -= alpha_diff * value / (lambda_2 + 1.0/tau);
+				v_new[idx] = prox_l1(v_new[idx], threshold);
 			}
-			// double threshold = lambda / (lambda_2 + 1.0/tau);
-			// for (int j = 0; j < D; ++j) {
-			// 	v_new[j] = prox_l1( v_new[j], threshold);
-			// }
 
 			// maintain u
 			for (int k = 0; k < xi.size(); ++k){
@@ -352,8 +354,14 @@ int main(int argc, char** argv){
 				v[idx] = v_new[idx];
 			}
 
+			// for (int k = 0; k < xi.size(); k++){
+			// 	int idx = xi[k].first;
+			// 	cout << idx << ": " << v_new[idx] << endl;
+			// }
+			// cout << endl;
 		}
 		update_time += omp_get_wtime();
+		// exit(0);
 
 		//if(iter%10==0)
 		nnz_v = nnz(v, D);

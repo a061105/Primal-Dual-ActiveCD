@@ -161,7 +161,7 @@ double lazy_update(double v_old, double u_old, int iter, int t_old,
 	// cout << "iter" << iter << ", t_old" << t_old << endl;
 	double t1;
 	if (v_old == 0.0) {
-		t1 = get_term1(lambda_2, tau, iter - t_old);
+		t1 = get_term1(lambda_2, tau, iter - t_old - 1);
 		if (-u_old > lambda) {
 			return t1 * (u_old + lambda) / lambda_2 - (u_old + lambda) / lambda_2;
 		} else if (-u_old < -lambda){
@@ -172,7 +172,7 @@ double lazy_update(double v_old, double u_old, int iter, int t_old,
 
 	} else if (v_old > 0.0) {
 		if (-u_old >= lambda) {
-			t1 = get_term1(lambda_2, tau, iter - t_old);
+			t1 = get_term1(lambda_2, tau, iter - t_old - 1);
 		} else {
 			int t_pos = get_t_pos(v_old, u_old, iter + 1, t_old + 1, lambda, lambda_2, tau);
 			if (t_pos == iter + 1) {
@@ -188,7 +188,7 @@ double lazy_update(double v_old, double u_old, int iter, int t_old,
 
 	} else {
 		if (-u_old <= -lambda) {
-			t1 = get_term1(lambda_2, tau, iter - t_old);
+			t1 = get_term1(lambda_2, tau, iter - t_old - 1);
 		} else {
 			int t_neg = get_t_neg(v_old, u_old, iter + 1, t_old + 1, lambda, lambda_2, tau);
 			if (t_neg == iter + 1) {
@@ -345,14 +345,14 @@ int main(int argc, char** argv){
 				x_bar[j] = v_new[j] + theta * (v_new[j] - v[j]);
 				v[j] = v_new[j];
 			}
-			// for (int k = 0; k < xi.size(); k++){
-				
-			// 	int idx = xi[k].first;
-			// 	x_bar[idx] = v_new[idx] + theta * (v_new[idx] - v[idx]);
-			// 	v[idx] = v_new[idx];
-			// }
 
+			// for (int k = 0; k < xi.size(); k++){
+			// 	int idx = xi[k].first;
+			// 	cout << idx << ": " << v_new[idx] << endl;
+			// }
+			// cout << endl;
 		}
+		// exit(0);
 		update_time += omp_get_wtime();
 
 		//if(iter%10==0)
