@@ -8,7 +8,7 @@
 
 using namespace std;
 
-const double EPS = 0.1;
+const double EPS = 0.001;
 
 template<class T>
 void shuffle( vector<T>& vect ){
