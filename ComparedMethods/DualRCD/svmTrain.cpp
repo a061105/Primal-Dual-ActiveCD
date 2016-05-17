@@ -8,6 +8,8 @@
 
 using namespace std;
 
+const double EPS = 0.1;
+
 template<class T>
 void shuffle( vector<T>& vect ){
 	
@@ -120,7 +122,7 @@ int main(int argc, char** argv){
 	double mu = atof(argv[4]);
 	
 	char* modelFile;
-	if( argc >= 1+4 )
+	if( argc > 1+4 )
 		modelFile = argv[5];
 	else{
 		modelFile = "model";
@@ -166,7 +168,7 @@ int main(int argc, char** argv){
 		index.push_back(i);
 	shuffle(index);
 
-	int max_iter = 1000;
+	int max_iter = 100000;
 	int iter=0;
 	double overall_time = 0.0;
 	while(iter < max_iter){
@@ -203,8 +205,13 @@ int main(int argc, char** argv){
 		overall_time += omp_get_wtime();
 		
 		//if(iter%10==0)
-		cerr << "iter=" << iter << ", nnz_a=" << nnz(alpha,N) << ", nnz_w=" << nnz(w,D) << ", d-obj=" << dual_objective(w,D,alpha,N,lambda2,mu) << ", p-obj=" << primal_objective(w,D, *data, lambda2, lambda, mu) << ", time=" << overall_time << endl;
+		double d_obj = dual_objective(w,D,alpha,N,lambda2,mu);
+		double p_obj = primal_objective(w,D, *data, lambda2, lambda, mu);
+		cerr << "iter=" << iter << ", nnz_a=" << nnz(alpha,N) << ", nnz_w=" << nnz(w,D) << ", d-obj=" << d_obj << ", p-obj=" << p_obj << ", time=" << overall_time << endl;
 		
+		if( p_obj-(-d_obj) < EPS/N )
+			break;
+
 		shuffle(index);
 		iter++;
 	}
