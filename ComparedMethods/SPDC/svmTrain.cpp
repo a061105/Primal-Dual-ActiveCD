@@ -377,13 +377,13 @@ int main(int argc, char** argv){
 		update_time += omp_get_wtime();
 		// exit(0);
 
-		//if(iter%10==0)
-		nnz_v = nnz(v, D);
-		cerr << "iter=" << iter << ", nnz_a=" << nnz(alpha, N) 
-		                        << ", nnz_v=" << nnz_v
-		                        << ", obj=" << primal_objective(data, v, D, alpha, N, mu, lambda, lambda_2) 
-		                        << ", time=" << update_time << endl ;
-		
+		if(iter%10==0) {
+			nnz_v = nnz(v, D);
+			cerr << "iter=" << iter << ", nnz_a=" << nnz(alpha, N) 
+			                        << ", nnz_v=" << nnz_v
+			                        << ", obj=" << primal_objective(data, v, D, alpha, N, mu, lambda, lambda_2) 
+			                        << ", time=" << update_time << endl ;
+		}
 		shuffle(index);
 		iter++;
 	}
