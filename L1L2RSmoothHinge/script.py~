@@ -1,0 +1,13 @@
+import sys;
+import os;
+
+try:
+    data_fname = sys.argv[1];
+    exec_fname = sys.argv[2];
+except IndexError:
+    print('script.py [data] [exeutable]');
+    exit();
+
+for l2 in [0.1 0.01]:
+    for l1 in [1 0.1 0.01]:
+        os.system(exec_fname+' '+data_fname+' '+str(l1)+' '+str(l2)+' 1.0 '+exec_fname+'-l1-'+str(l1)+'-l2-'+str(l2));

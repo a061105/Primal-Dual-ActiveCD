@@ -2,7 +2,7 @@
 #include "Parser.h"
 #include <omp.h>
 
-const double EPS = 0.001;
+const double EPS = 1e-15;
 
 void search_a_active( double* w, deque<int>& w_act_index, vector<SparseVec*>& Xt, 
 		double* alpha,  vector<int>& a_ind_new, int num_select, int N ){
@@ -217,10 +217,11 @@ int main(int argc, char** argv){
 	//Main Loop
 	int num_a_select = 10;
 	int num_w_select = 10;
-	int max_iter = 100000;
+	int max_iter = 1000;
 	vector<int> w_ind_new, a_ind_new;
 	double sa_time=0, sw_time=0, updateAct_time=0, buildXact_time=0;
 	double overall_time = 0.0;
+	cerr.precision(17);
 	for(int iter=0; iter<max_iter; iter++){
 		
 		//search new active samples and features
@@ -278,8 +279,8 @@ int main(int argc, char** argv){
 				double new_alpha = min( max( alpha[i] - gi/Qii[i] , 0.0 ) , 1.0);
 				//maintain v=X_act'a, w=prox(v); (j \notin act_set need not be maintained)
 				double alpha_diff = new_alpha-alpha[i];
-				if(  fabs(alpha_diff) > 1e-12 ){
-
+				if(  fabs(alpha_diff) > 0.0 ){
+					
 					//for(HashVec::iterator it=xi->begin(); it!=xi->end(); it++){
 					for(SparseVec::iterator it=xi->begin(); it!=xi->end(); it++){
 						v[it->first] += alpha_diff * it->second/lambda2 ;
@@ -327,7 +328,7 @@ int main(int argc, char** argv){
 			double d_obj= dual_objective(w,D,alpha,N,lambda2,mu);
 		       	double p_obj= primal_objective(w,D,X,lambda2,lambda,mu);
 			cerr << "i=" << iter << ", |act_a|=" << a_act_index.size() << ", |act_w|=" << w_act_index.size() << ", d-obj=" << d_obj << ", p-obj=" << p_obj << ", time=" << overall_time << ", sa=" << sa_time << ", sw=" << sw_time << ", build=" << buildXact_time << ", update=" << updateAct_time << endl; 
-			if( p_obj-(-d_obj) < EPS/N )
+			if( p_obj-(-d_obj) < EPS )
 				break;
 		}
 
@@ -354,7 +355,7 @@ int main(int argc, char** argv){
 	fout << D << " " << w_act_index.size() << endl;
 	for(int i=0;i<w_act_index.size();i++){
 		int j = w_act_index[i];
-		if( fabs(w[j]) > 1e-12 )
+		if( fabs(w[j]) > 1e-15 )
 			fout << j << " " << w[j] << endl;
 	}
 	fout.close();

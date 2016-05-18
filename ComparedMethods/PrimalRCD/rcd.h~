@@ -52,7 +52,8 @@ void rcd(vector<Feature*>& features, vector<double>& labels, int n, LossFunc* lo
 			for (SparseVec::iterator ii = fea->values.begin(); ii != fea->values.end(); ++ii){
 				gradient += loss->deriv(factors[ii->first],labels[ii->first]) * ii->second;
 			}
-			gradient += lambda2;
+			gradient += lambda2*w[j];
+
 			double eta = softThd(w[j] - gradient/Qii,lambda/Qii) - w[j];
 			
 			//maintain factors

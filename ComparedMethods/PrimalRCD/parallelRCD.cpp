@@ -73,8 +73,8 @@ int main(int argc, char** argv){
 	readData(dataFname, data, labels, d);
 	n = data.size();
 	dataToFeatures( data, d, features);
-	cout << "iterations\ttime(s)\tobjective\tnnz"<< endl;
-	cout << "#samples n="  << data.size() <<"; #features d=" << features.size() << endl;
+	cerr << "iterations\ttime(s)\tobjective\tnnz"<< endl;
+	cerr << "#samples n="  << data.size() <<"; #features d=" << features.size() << endl;
 	
 	LossFunc* loss;
        	if( loss_to_use==0 )
@@ -92,7 +92,7 @@ int main(int argc, char** argv){
 	int d2;
 	readData(testFname, testdata, testlabels, d2);
 	double acc = accuracy( testdata, testlabels, w, d );
-	cout << "test acc = " << acc << endl;
+	cerr << "test acc = " << acc << endl;
 	
 	return 0;
 }

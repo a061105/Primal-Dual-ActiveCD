@@ -300,11 +300,12 @@ int main(int argc, char** argv){
 	int max_iter = 1000;
 	int iter = 0;
 	double nnz_v = 0.0;
-
+	double update_time = 0.0;
 	int inner_iter = 0;
+	cerr.precision(17);
 	while(iter < max_iter){
 		
-		double update_time = -omp_get_wtime();
+		update_time -= omp_get_wtime();
 		for(int r = 0; r < N; r++) {
 			
 			int i = index[r];

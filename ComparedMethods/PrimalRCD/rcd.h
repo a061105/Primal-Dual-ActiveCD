@@ -99,7 +99,7 @@ void rcd(vector<Feature*>& features, vector<double>& labels, int n, LossFunc* lo
 			
 			double end = omp_get_wtime();
 			double time_used = end-start-minus_time;
-			cerr  << setprecision(15)<<setw(20) << iter << setw(20) << time_used << setw(20) << funval << setw(10)<<nnz<< endl;
+			cerr  << setprecision(17)<<setw(20) << iter << setw(20) << time_used << setw(20) << funval << setw(10)<<nnz<< endl;
 			//if( funval < stop_obj ){
 			//	break;
 			//}

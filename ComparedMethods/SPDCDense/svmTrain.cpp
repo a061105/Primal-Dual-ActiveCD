@@ -292,12 +292,14 @@ int main(int argc, char** argv){
 	}
 	shuffle(index);
 
-	int max_iter = 1000;
+	int max_iter = 250;
 	int iter = 0;
 	double nnz_v = 0.0;
+	double update_time = 0.0;
+	cerr.precision(17);
 	while(iter < max_iter){
 		
-		double update_time = -omp_get_wtime();
+		update_time -= omp_get_wtime();
 		for(int r = 0; r < N; r++) {
 			
 			int i = index[r];
