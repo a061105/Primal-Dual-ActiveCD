@@ -106,102 +106,16 @@ double primal_objective(vector<Instance*>* data, double* w, int D, double* alpha
 
 	double obj_l1 = 0.0;
 	for(int i = 0; i < D; i++) {
-		obj_l1 += fabs(w[i]);
+		// obj_l1 += fabs(w[i]);
+		if (w[i] > 0) {
+			obj_l1 += w[i];
+		} else {
+			obj_l1 -= w[i];
+		}
 	}
 	obj_l1 *= lambda;
-
+	cout << loss << ", " << obj_l1 << ", " << obj_l2 << endl;
 	return loss + obj_l1 + obj_l2;
-}
-
-double get_term1(double lambda_2, double tau, int t_diff) {
-	// cout << t_diff << endl;
-	return 1.0 / pow((1.0 + lambda_2 * tau), t_diff);
-}
-
-int get_t_pos(double v_old, double u_old, int from, int to, double lambda, double lambda_2, double tau) {
-
-	double threshold = log(1.0 + lambda_2 * v_old / (u_old + lambda)) / log(1.0 + lambda_2 * tau);
-	while (from - to >= threshold) {
-		from--;
-		cout << from << endl;
-	}
-	assert(from >= to);
-	// cout << "pos" << t_old << ", " << from << endl;
-	// if (from < to) from = to;
-	return from;
-}
-
-int get_t_neg(double v_old, double u_old, int from, int to, double lambda, double lambda_2, double tau) {
-
-	while (from - to >= log(1.0 + lambda_2 * v_old / (u_old - lambda)) / log(1.0 + lambda_2 * tau)) {
-		from--;
-		cout << from << endl;
-	}
-	assert(from >= to);
-	// cout << "neg" << from << endl;
-	// if (from < to) from = to;
-	return from;
-}
-
-double get_v_recurse(double vj, double u_old, int repeat, 
-					 double lambda, double lambda_2, double tau) {
-
-	for (int i = 0; i < repeat; ++i) {
-		vj = 1.0 / (1.0 + lambda_2 * tau) * (vj - tau * u_old);
-		
-		double threshold = lambda / (lambda_2 + 1.0/tau);
-		vj = prox_l1(vj, threshold);
-		// cout << vj << endl;
-	}
-	return vj;
-}
-
-double lazy_update(double v_old, double u_old, int iter, int t_old, 
-				   double lambda, double lambda_2, double tau) {
-	// cout << "iter" << iter << ", t_old" << t_old << endl;
-	double t1;
-	if (v_old == 0.0) {
-		t1 = get_term1(lambda_2, tau, iter - t_old - 1);
-		if (-u_old > lambda) {
-			return t1 * (u_old + lambda) / lambda_2 - (u_old + lambda) / lambda_2;
-		} else if (-u_old < -lambda){
-			return t1 * (u_old - lambda) / lambda_2 - (u_old - lambda) / lambda_2;
-		} else{
-			return 0.0;
-		}
-
-	} else if (v_old > 0.0) {
-		if (-u_old >= lambda) {
-			t1 = get_term1(lambda_2, tau, iter - t_old - 1);
-		} else {
-			int t_pos = get_t_pos(v_old, u_old, iter + 1, t_old + 1, lambda, lambda_2, tau);
-			if (t_pos == iter + 1) {
-				t1 = get_term1(lambda_2, tau, t_pos - t_old - 1);
-			} else {
-				double new_v_old = get_v_recurse(v_old, u_old, t_pos - t_old + 1, lambda, lambda_2, tau);
-				// cout << "pos: " <<  new_v_old << endl;
-				return lazy_update(new_v_old, u_old, iter, t_pos, lambda, lambda_2, tau);
-			}
-			
-		}
-		return t1 * (v_old + (u_old + lambda) / lambda_2) - (u_old + lambda) / lambda_2;
-
-	} else {
-		if (-u_old <= -lambda) {
-			t1 = get_term1(lambda_2, tau, iter - t_old - 1);
-		} else {
-			int t_neg = get_t_neg(v_old, u_old, iter + 1, t_old + 1, lambda, lambda_2, tau);
-			if (t_neg == iter + 1) {
-				t1 = get_term1(lambda_2, tau, t_neg - t_old - 1);
-			}else {
-				double new_v_old = get_v_recurse(v_old, u_old, t_neg - t_old + 1, lambda, lambda_2, tau);
-				// cout << "neg: " << new_v_old << endl;
-				// cout << v_old << endl;
-				return lazy_update(new_v_old, u_old, iter, t_neg, lambda, lambda_2, tau);
-			}
-		}
-		return t1 * (v_old + (u_old - lambda) / lambda_2) - (u_old - lambda) / lambda_2;
-	}
 }
 
 int nnz(double* v, int size){
@@ -260,13 +174,21 @@ int main(int argc, char** argv){
 		}
 	}
 
-	double tau = 0.5 / (R * sqrt(N));
-	double sigma = 0.5 / R * sqrt(N);
-	double theta = 1.0 - 1.0 / (double(N) + R * sqrt(N));
-
+	// double tau = 0.5 / (R * sqrt(N));
+	// double sigma = 0.5 / R * sqrt(N);
+	// double theta = 1.0 - 1.0 / (double(N) + R * sqrt(N));
 	lambda /= N; // L1 regularization constant
 	lambda_2 /= N; // L2 regularization constant
 
+	double ll = lambda_2;
+	double tau = 1.0 / (R * sqrt(N * ll));
+	double sigma = 1.0 / R * sqrt(N * ll);
+	double theta = 1.0 - 1.0 / (double(N) + R * sqrt(N)/sqrt(ll));
+	// double tau = 0.5 / (R * sqrt(N * ll));
+	// double sigma = 0.5 / R * sqrt(N * ll);
+	// double theta = 1.0 - 1.0 / (double(N) + R * sqrt(N)/sqrt(ll));
+
+	cout << "R: " << R << endl;
 	cout << "tau: " << tau << endl;
 	cout << "sigma: " << sigma << endl;
 	cout << "theta: " << theta << endl;
@@ -292,11 +214,15 @@ int main(int argc, char** argv){
 	}
 	shuffle(index);
 
-	int max_iter = 250;
+	int max_iter = 500;
 	int iter = 0;
 	double nnz_v = 0.0;
 	double update_time = 0.0;
 	cerr.precision(17);
+
+    // cout << "obj=" << primal_objective(data, v, D, alpha, N, mu, lambda, lambda_2) ;
+    // exit(0);
+
 	while(iter < max_iter){
 		
 		update_time -= omp_get_wtime();
@@ -367,7 +293,7 @@ int main(int argc, char** argv){
 		                        << ", nnz_v=" << nnz_v
 		                        << ", obj=" << primal_objective(data, v, D, alpha, N, mu, lambda, lambda_2) 
 		                        << ", time=" << update_time << endl ;
-		
+		// for (int i = 0; i < N; ++i) cout << i << ":" << alpha[i] << endl;
 		shuffle(index);
 		iter++;
 	}
