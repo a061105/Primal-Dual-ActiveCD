@@ -67,17 +67,20 @@ double primal_objective(double* w, int D, vector<Instance*>& data, double lambda
 		double yz_i = yi*dot( w, data[i]->xi );
 		obj += loss(yz_i, mu);
 	}
+	double obj1 = obj / N;
 
 	double norm2 = 0.0;
 	for(int i=0;i<D;i++)
 		norm2 += w[i]*w[i];
 	obj += norm2*lambda2/2.0;
+	double obj2 = norm2*lambda2/2.0/N;
 
 	double norm1 = 0.0;
 	for(int i=0;i<D;i++)
 		norm1 += fabs(w[i]);
 	obj += norm1*lambda;
-
+	double obj3 = norm1*lambda/N;
+	cout << obj1 << ", " << obj3 << ", " << obj2 << endl;
 	return obj/N;
 	//return obj;
 }
@@ -168,10 +171,14 @@ int main(int argc, char** argv){
 		index.push_back(i);
 	shuffle(index);
 
-	int max_iter = 1000;
+	int max_iter = 500;
 	int iter=0;
 	double overall_time = 0.0;
 	cerr.precision(17);
+	
+	//double p_obj = primal_objective(w,D, *data, lambda2, lambda, mu);
+	//cout << p_obj;
+	//exit(0);
 	while(iter < max_iter){
 		
 		overall_time -= omp_get_wtime();
@@ -206,6 +213,10 @@ int main(int argc, char** argv){
 		overall_time += omp_get_wtime();
 		
 		//if(iter%10==0)
+		// for (int i = 0; i < D; ++i) cout << w[i] << endl;
+		// exit(0);
+		// for (int i = 0; i < N; ++i) cout << i << ":" << alpha[i] << endl;
+
 		double d_obj = dual_objective(w,D,alpha,N,lambda2,mu);
 		double p_obj = primal_objective(w,D, *data, lambda2, lambda, mu);
 		cerr << "iter=" << iter << ", nnz_a=" << nnz(alpha,N) << ", nnz_w=" << nnz(w,D) << ", d-obj=" << d_obj << ", p-obj=" << p_obj << ", time=" << overall_time << endl;

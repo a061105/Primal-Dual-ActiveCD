@@ -109,7 +109,7 @@ double primal_objective(vector<Instance*>* data, double* w, int D, double* alpha
 		obj_l1 += fabs(w[i]);
 	}
 	obj_l1 *= lambda;
-
+	cout << loss << ", " << obj_l1 << ", " << obj_l2 << endl;
 	return loss + obj_l1 + obj_l2;
 }
 
@@ -125,9 +125,9 @@ int get_t_pos(double v_old, double u_old, int from, int to, double lambda, doubl
 		from--;
 		// cout << from << endl;
 	}
-	assert(from >= to);
+	//assert(from >= to);
 	// cout << "pos" << t_old << ", " << from << endl;
-	// if (from < to) from = to;
+	if (from < to) from = to;
 	return from;
 }
 
@@ -138,9 +138,9 @@ int get_t_neg(double v_old, double u_old, int from, int to, double lambda, doubl
 		from--;
 		// cout << from << endl;
 	}
-	assert(from >= to);
+	//assert(from >= to);
 	// cout << "neg" << from << endl;
-	// if (from < to) from = to;
+	if (from < to) from = to;
 	return from;
 }
 
@@ -265,12 +265,16 @@ int main(int argc, char** argv){
 		}
 	}
 
-	double tau = 0.5 / (R * sqrt(N));
-	double sigma = 0.5 / R * sqrt(N);
-	double theta = 1.0 - 1.0 / (double(N) + R * sqrt(N));
-
 	lambda /= N; // L1 regularization constant
 	lambda_2 /= N; // L2 regularization constant
+	
+	// double tau = 0.5 / (R * sqrt(N));
+	double ll = lambda_2;
+	double tau = 0.5 / (R * sqrt(N * ll));
+	// double sigma = 1.0 / R * sqrt(lambda_2 * N);
+	// double sigma = 0.5 / R * sqrt(N);
+	double sigma = 0.5 / R * sqrt(N * ll);
+	double theta = 1.0 - 1.0 / (double(N) + R * sqrt(N)/sqrt(ll));
 
 	cout << "tau: " << tau << endl;
 	cout << "sigma: " << sigma << endl;
@@ -297,12 +301,15 @@ int main(int argc, char** argv){
 	}
 	shuffle(index);
 
-	int max_iter = 1000;
+	int max_iter = 10;
 	int iter = 0;
 	double nnz_v = 0.0;
 	double update_time = 0.0;
 	int inner_iter = 0;
 	cerr.precision(17);
+
+    // cout << ", obj=" << primal_objective(data, v, D, alpha, N, mu, lambda, lambda_2) ;
+    // exit(0);
 	while(iter < max_iter){
 		
 		update_time -= omp_get_wtime();
@@ -377,14 +384,17 @@ int main(int argc, char** argv){
 		}
 		update_time += omp_get_wtime();
 		// exit(0);
-
-		if(iter%10==0) {
+		// for (int i = 0; i < D; ++i) {
+		// 	cout << v[i] << endl;
+		// }
+		// exit(0);
+		//if(iter%10==0) {
 			nnz_v = nnz(v, D);
 			cerr << "iter=" << iter << ", nnz_a=" << nnz(alpha, N) 
 			                        << ", nnz_v=" << nnz_v
 			                        << ", obj=" << primal_objective(data, v, D, alpha, N, mu, lambda, lambda_2) 
 			                        << ", time=" << update_time << endl ;
-		}
+		//}
 		shuffle(index);
 		iter++;
 	}
