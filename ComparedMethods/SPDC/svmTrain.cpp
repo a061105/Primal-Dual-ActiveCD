@@ -267,15 +267,16 @@ int main(int argc, char** argv){
 
 	lambda /= N; // L1 regularization constant
 	lambda_2 /= N; // L2 regularization constant
-	
-	// double tau = 0.5 / (R * sqrt(N));
-	double ll = lambda_2;
-	double tau = 0.5 / (R * sqrt(N * ll));
-	// double sigma = 1.0 / R * sqrt(lambda_2 * N);
-	// double sigma = 0.5 / R * sqrt(N);
-	double sigma = 0.5 / R * sqrt(N * ll);
-	double theta = 1.0 - 1.0 / (double(N) + R * sqrt(N)/sqrt(ll));
 
+	double ll = lambda_2;
+	double tau = 1.0 / (R * sqrt(N * ll));
+	double sigma = 1.0 / R * sqrt(N * ll);
+	double theta = 1.0 - 1.0 / (double(N) + R * sqrt(N)/sqrt(ll));
+	// double tau = 0.5 / (R * sqrt(N * ll));
+	// double sigma = 0.5 / R * sqrt(N * ll);
+	// double theta = 1.0 - 1.0 / (double(N) + R * sqrt(N)/sqrt(ll));
+
+	cout << "R: " << R << endl;
 	cout << "tau: " << tau << endl;
 	cout << "sigma: " << sigma << endl;
 	cout << "theta: " << theta << endl;
@@ -301,7 +302,7 @@ int main(int argc, char** argv){
 	}
 	shuffle(index);
 
-	int max_iter = 10;
+	int max_iter = 500;
 	int iter = 0;
 	double nnz_v = 0.0;
 	double update_time = 0.0;
