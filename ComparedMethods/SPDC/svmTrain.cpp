@@ -113,11 +113,13 @@ double primal_objective(vector<Instance*>* data, double* w, int D, double* alpha
 	return loss + obj_l1 + obj_l2;
 }
 
+
+// Helper function for lazy_update.
 double get_term1(double lambda_2, double tau, int t_diff) {
-	// cout << t_diff << endl;
 	return 1.0 / pow((1.0 + lambda_2 * tau), t_diff);
 }
 
+// Helper function for lazy_update.
 int get_t_pos(double v_old, double u_old, int from, int to, double lambda, double lambda_2, double tau) {
 
 	double threshold = log(1.0 + lambda_2 * v_old / (u_old + lambda)) / log(1.0 + lambda_2 * tau);
@@ -134,6 +136,7 @@ int get_t_pos(double v_old, double u_old, int from, int to, double lambda, doubl
 	return largest;
 }
 
+// Helper function for lazy_update.
 int get_t_neg(double v_old, double u_old, int from, int to, double lambda, double lambda_2, double tau) {
 
 	double threshold = log(1.0 + lambda_2 * v_old / (u_old - lambda)) / log(1.0 + lambda_2 * tau);
@@ -150,6 +153,7 @@ int get_t_neg(double v_old, double u_old, int from, int to, double lambda, doubl
 	return largest;
 }
 
+// Helper function for lazy_update.
 double get_v_recurse(double vj, double u_old, int repeat, 
 					 double lambda, double lambda_2, double tau) {
 
@@ -157,19 +161,16 @@ double get_v_recurse(double vj, double u_old, int repeat,
 	for (int i = 0; i < repeat; ++i) {
 		vj = (1.0 / (1.0 + lambda_2 * tau)) * (vj - tau * u_old);
 		vj = prox_l1(vj, threshold);
-		// cout << vj << endl;
 	}
 	return vj;
 }
 
+// magic.
 double lazy_update(double v_old, double u_old, int iter, int t_old, 
 				   double lambda, double lambda_2, double tau) {
-	// cout << "iter" << iter << ", t_old" << t_old << endl;
 	double t1;
-	// cout << "v_old:" << v_old << endl;
 			
 	if (v_old == 0.0) {
-		// cout << "case 1" << endl;
 		t1 = get_term1(lambda_2, tau, iter - t_old - 1);
 		if (-u_old > lambda) {
 			return t1 * (u_old + lambda) / lambda_2 - (u_old + lambda) / lambda_2;
@@ -180,17 +181,13 @@ double lazy_update(double v_old, double u_old, int iter, int t_old,
 		}
 	} else if (v_old > 0.0) {
 		if (-u_old >= lambda) {
-			// cout << "case 2" << endl;
 			t1 = get_term1(lambda_2, tau, iter - t_old - 1);
 		} else {
 			int t_pos = get_t_pos(v_old, u_old, t_old + 1, iter, lambda, lambda_2, tau);
 			if (t_pos == iter) {
-				// cout << "case 3" << endl;
 				t1 = get_term1(lambda_2, tau, t_pos - t_old - 1);
 			} else {
-				// cout << "case 4" << endl;
-				double new_v_old = get_v_recurse(v_old, u_old, t_pos - (t_old), lambda, lambda_2, tau);
-				// cout << "pos: " <<  new_v_old << endl;
+				double new_v_old = get_v_recurse(v_old, u_old, t_pos - t_old, lambda, lambda_2, tau);
 				return lazy_update(new_v_old, u_old, iter, t_pos, lambda, lambda_2, tau);
 			}
 			
@@ -199,21 +196,13 @@ double lazy_update(double v_old, double u_old, int iter, int t_old,
 
 	} else {
 		if (-u_old <= -lambda) {
-			// cout << "case 5" << endl;
 			t1 = get_term1(lambda_2, tau, iter - t_old - 1);
-			// cout << "t1:" << t1 << endl;
 		} else {
 			int t_neg = get_t_neg(v_old, u_old, t_old + 1, iter, lambda, lambda_2, tau);
-			// cout << "t_neg:" << t_neg << endl;
 			if (t_neg == iter) {
-				// cout << "case 6" << endl;
-				// cout << "t_neg:" << t_neg << endl;
 				t1 = get_term1(lambda_2, tau, t_neg - t_old - 1);
 			}else {
-				// cout << "case 7" << endl;
-				double new_v_old = get_v_recurse(v_old, u_old, t_neg - (t_old), lambda, lambda_2, tau);
-				// cout << "neg: " << new_v_old << endl;
-				// cout << v_old << endl;
+				double new_v_old = get_v_recurse(v_old, u_old, t_neg - t_old, lambda, lambda_2, tau);
 				return lazy_update(new_v_old, u_old, iter, t_neg, lambda, lambda_2, tau);
 			}
 		}
@@ -321,8 +310,6 @@ int main(int argc, char** argv){
 	int inner_iter = 0;
 	cerr.precision(17);
 
-    // cout << ", obj=" << primal_objective(data, v, D, alpha, N, mu, lambda, lambda_2) ;
-    // exit(0);
 	while(iter < max_iter){
 		
 		update_time -= omp_get_wtime();
@@ -332,35 +319,27 @@ int main(int argc, char** argv){
 			SparseVec xi = data->at(i)->xi;
 			double yi = data->at(i)->yi;
 
-			// lazy update primal
+			// Lazy update primal: update v and x_bar for js for which feature[j]!=0, so that y uses the correct ones.
+			// Note that here we only update for iterations where feature[j]==0. 
+			// Whenever feature[j]!=0, we update v[j] and x_bar[j] in the end of that
+			// iteration. 
+			// Also note that when v[j] is just updated in the previous iteration, lazy_update(...) does nothing. 
 			for (int k = 0; k < xi.size(); k++){	
 				int idx = xi[k].first;
 				double value = xi[k].second;
 
 				double v_old = v[idx];
-				// v here is one iteration before the current v, not the oldest. And \bar{x} is linear
-				// combination of this one and the updated one. 
-				//                                    3              -1
-				// cout << idx <<" ";
 				v[idx] = lazy_update(v_old, u[idx], inner_iter, last_t[idx], lambda, lambda_2, tau);
-				// cout << "after lazy: " << idx << ", " << v[idx] << endl;
 
+				// If last_t[idx] == inner_iter - 1, x_bar is up to date. Otherwise, we need to 
+				// solve v for one more step before, and calculate x_bar accordingly. 
 				if (last_t[idx] == inner_iter - 1) continue;
 
-				// cout << idx <<" ";
 				double v_older = lazy_update(v_old, u[idx], inner_iter-1, last_t[idx], lambda, lambda_2, tau);
 				x_bar[idx] = v[idx] + theta * (v[idx] - v_older);
 			}
-
-
-			// for (int k = 0; k < xi.size(); k++){
-			// 	int idx = xi[k].first;
-			// 	cout << "x_bar used: " << last_t[idx] << "->" <<  inner_iter <<"  " << idx << ": " << x_bar[idx] << endl;
-			// }
-
-
 			
-			// update dual
+			// update dual with the correct x_bar. 
 			double new_alpha = (yi - dot(x_bar, xi) - (alpha[i] / sigma)) / (-1.0 - (1.0/sigma));
 			if (yi > 0) {
 				new_alpha = min( max( new_alpha, -1.0 ) , 0.0);
@@ -368,11 +347,9 @@ int main(int argc, char** argv){
 				new_alpha = min( max( new_alpha, 0.0 ) , 1.0);
 			}
 			double alpha_diff = new_alpha-alpha[i];
-			// cout << "alpha_diff" << alpha_diff << endl;
 			alpha[i] = new_alpha;
 
-
-			// update primal			
+			// update primal as usual.
 			double threshold = lambda / (lambda_2 + 1.0/tau);
 			for (int k = 0; k < xi.size(); k++){
 				
@@ -394,7 +371,7 @@ int main(int argc, char** argv){
 				u[idx] += alpha_diff * value / N;
 			}
 
-			// maintain x_bar
+			// maintain x_bar as usual
 			for (int k = 0; k < xi.size(); k++){
 				
 				int idx = xi[k].first;
@@ -402,24 +379,9 @@ int main(int argc, char** argv){
 				v[idx] = v_new[idx];
 			}
 
-			// cout << inner_iter << endl;
-			// for (int k = 0; k < xi.size(); ++k){
-			// 	int idx = xi[k].first;
-			// 	cout << u[idx] << ", ";
-			// }
-			// cout << endl;
-
-			// if (inner_iter == 10000)
-			// 	exit(0);
-
 			inner_iter++;
-			// cerr << "iter=" << inner_iter << ", nnz_a=" << nnz(alpha, N) << endl;
 		}
 		update_time += omp_get_wtime();
-		// for (int i = 0; i < D; ++i) {
-		// 	cout << v[i] << endl;
-		// }
-		// exit(0);
 		//if(iter%10==0) {
 			nnz_v = nnz(v, D);
 			cerr << "iter=" << iter << ", nnz_a=" << nnz(alpha, N) 
