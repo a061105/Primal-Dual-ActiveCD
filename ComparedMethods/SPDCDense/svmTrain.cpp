@@ -220,9 +220,6 @@ int main(int argc, char** argv){
 	double update_time = 0.0;
 	cerr.precision(17);
 
-    // cout << "obj=" << primal_objective(data, v, D, alpha, N, mu, lambda, lambda_2) ;
-    // exit(0);
-
 	while(iter < max_iter){
 		
 		update_time -= omp_get_wtime();
@@ -231,6 +228,7 @@ int main(int argc, char** argv){
 			int i = index[r];
 			SparseVec xi = data->at(i)->xi;
 			double yi = data->at(i)->yi;
+
 			
 			// update dual
 			double new_alpha = (yi - dot(x_bar, xi) - (alpha[i] / sigma)) / (-1.0 - (1.0/sigma));
@@ -252,7 +250,6 @@ int main(int argc, char** argv){
 				int idx = xi[k].first;
 				double value = xi[k].second;
 				v_new[idx] -= alpha_diff * value / (lambda_2 + 1.0/tau);
-				// cout << idx << "->" << endl;			
 
 			}
 			
@@ -274,25 +271,17 @@ int main(int argc, char** argv){
 			for (int j = 0; j < D; ++j) {
 				x_bar[j] = v_new[j] + theta * (v_new[j] - v[j]);
 				v[j] = v_new[j];
-				// cout << v[j] << endl;
 			}
-			// cout << endl;
-
-			// for (int k = 0; k < xi.size(); k++){
-			// 	int idx = xi[k].first;
-			// 	cout << idx << ": " << v_new[idx] << endl;
-			// }
-			// cout << endl;
 		}
-		// exit(0);
 		update_time += omp_get_wtime();
 
-		//if(iter%10==0)
+		// if(iter%10==0) {
 		nnz_v = nnz(v, D);
 		cerr << "iter=" << iter << ", nnz_a=" << nnz(alpha, N) 
 		                        << ", nnz_v=" << nnz_v
 		                        << ", obj=" << primal_objective(data, v, D, alpha, N, mu, lambda, lambda_2) 
 		                        << ", time=" << update_time << endl ;
+		// }
 		// for (int i = 0; i < N; ++i) cout << i << ":" << alpha[i] << endl;
 		shuffle(index);
 		iter++;
