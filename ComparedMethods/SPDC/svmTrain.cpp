@@ -189,7 +189,7 @@ double lazy_update(double v_old, double u_old, int iter, int t_old,
 				t1 = get_term1(lambda_2, tau, t_pos - t_old - 1);
 			} else {
 				// cout << "case 4" << endl;
-				double new_v_old = get_v_recurse(v_old, u_old, t_pos - (t_old+1), lambda, lambda_2, tau);
+				double new_v_old = get_v_recurse(v_old, u_old, t_pos - (t_old), lambda, lambda_2, tau);
 				// cout << "pos: " <<  new_v_old << endl;
 				return lazy_update(new_v_old, u_old, iter, t_pos, lambda, lambda_2, tau);
 			}
@@ -211,7 +211,7 @@ double lazy_update(double v_old, double u_old, int iter, int t_old,
 				t1 = get_term1(lambda_2, tau, t_neg - t_old - 1);
 			}else {
 				// cout << "case 7" << endl;
-				double new_v_old = get_v_recurse(v_old, u_old, t_neg - (t_old+1), lambda, lambda_2, tau);
+				double new_v_old = get_v_recurse(v_old, u_old, t_neg - (t_old), lambda, lambda_2, tau);
 				// cout << "neg: " << new_v_old << endl;
 				// cout << v_old << endl;
 				return lazy_update(new_v_old, u_old, iter, t_neg, lambda, lambda_2, tau);
@@ -341,20 +341,22 @@ int main(int argc, char** argv){
 				// v here is one iteration before the current v, not the oldest. And \bar{x} is linear
 				// combination of this one and the updated one. 
 				//                                    3              -1
+				// cout << idx <<" ";
 				v[idx] = lazy_update(v_old, u[idx], inner_iter, last_t[idx], lambda, lambda_2, tau);
 				// cout << "after lazy: " << idx << ", " << v[idx] << endl;
 
 				if (last_t[idx] == inner_iter - 1) continue;
 
+				// cout << idx <<" ";
 				double v_older = lazy_update(v_old, u[idx], inner_iter-1, last_t[idx], lambda, lambda_2, tau);
 				x_bar[idx] = v[idx] + theta * (v[idx] - v_older);
 			}
 
 
-			for (int k = 0; k < xi.size(); k++){
-				int idx = xi[k].first;
-				// cout << "x_bar used: " << last_t[idx] << "->" <<  inner_iter <<"  " << idx << ": " << x_bar[idx] << endl;
-			}
+			// for (int k = 0; k < xi.size(); k++){
+			// 	int idx = xi[k].first;
+			// 	cout << "x_bar used: " << last_t[idx] << "->" <<  inner_iter <<"  " << idx << ": " << x_bar[idx] << endl;
+			// }
 
 
 			
@@ -400,14 +402,15 @@ int main(int argc, char** argv){
 				v[idx] = v_new[idx];
 			}
 
-			for (int k = 0; k < xi.size(); ++k){
-				int idx = xi[k].first;
-				cout << u[idx] << ", ";
-			}
-			cout << endl;
+			// cout << inner_iter << endl;
+			// for (int k = 0; k < xi.size(); ++k){
+			// 	int idx = xi[k].first;
+			// 	cout << u[idx] << ", ";
+			// }
+			// cout << endl;
 
-			if (inner_iter == 10)
-				exit(0);
+			// if (inner_iter == 10000)
+			// 	exit(0);
 
 			inner_iter++;
 			// cerr << "iter=" << inner_iter << ", nnz_a=" << nnz(alpha, N) << endl;
