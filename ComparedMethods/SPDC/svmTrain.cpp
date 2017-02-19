@@ -121,27 +121,33 @@ double get_term1(double lambda_2, double tau, int t_diff) {
 int get_t_pos(double v_old, double u_old, int from, int to, double lambda, double lambda_2, double tau) {
 
 	double threshold = log(1.0 + lambda_2 * v_old / (u_old + lambda)) / log(1.0 + lambda_2 * tau);
-	while (from - to >= threshold) {
-		from--;
-		// cout << from << endl;
+	int largest = -1;
+	for (int i = from; i <= to; ++i) {
+		if (i - from < threshold) {
+			largest = i;
+		} else {
+			assert(largest != -1);
+			return largest;
+		}
 	}
-	//assert(from >= to);
-	// cout << "pos" << t_old << ", " << from << endl;
-	if (from < to) from = to;
-	return from;
+	assert(largest != -1);
+	return largest;
 }
 
 int get_t_neg(double v_old, double u_old, int from, int to, double lambda, double lambda_2, double tau) {
 
 	double threshold = log(1.0 + lambda_2 * v_old / (u_old - lambda)) / log(1.0 + lambda_2 * tau);
-	while (from - to >= threshold) {
-		from--;
-		// cout << from << endl;
+	int largest = -1;
+	for (int i = from; i <= to; ++i) {
+		if (i - from < threshold) {
+			largest = i;
+		} else {
+			assert(largest != -1);
+			return largest;
+		}
 	}
-	//assert(from >= to);
-	// cout << "neg" << from << endl;
-	if (from < to) from = to;
-	return from;
+	assert(largest != -1);
+	return largest;
 }
 
 double get_v_recurse(double vj, double u_old, int repeat, 
@@ -163,6 +169,7 @@ double lazy_update(double v_old, double u_old, int iter, int t_old,
 	// cout << "v_old:" << v_old << endl;
 			
 	if (v_old == 0.0) {
+		// cout << "case 1" << endl;
 		t1 = get_term1(lambda_2, tau, iter - t_old - 1);
 		if (-u_old > lambda) {
 			return t1 * (u_old + lambda) / lambda_2 - (u_old + lambda) / lambda_2;
@@ -171,16 +178,18 @@ double lazy_update(double v_old, double u_old, int iter, int t_old,
 		} else{
 			return 0.0;
 		}
-
 	} else if (v_old > 0.0) {
 		if (-u_old >= lambda) {
+			// cout << "case 2" << endl;
 			t1 = get_term1(lambda_2, tau, iter - t_old - 1);
 		} else {
-			int t_pos = get_t_pos(v_old, u_old, iter, t_old + 1, lambda, lambda_2, tau);
+			int t_pos = get_t_pos(v_old, u_old, t_old + 1, iter, lambda, lambda_2, tau);
 			if (t_pos == iter) {
+				// cout << "case 3" << endl;
 				t1 = get_term1(lambda_2, tau, t_pos - t_old - 1);
 			} else {
-				double new_v_old = get_v_recurse(v_old, u_old, t_pos - t_old, lambda, lambda_2, tau);
+				// cout << "case 4" << endl;
+				double new_v_old = get_v_recurse(v_old, u_old, t_pos - (t_old+1), lambda, lambda_2, tau);
 				// cout << "pos: " <<  new_v_old << endl;
 				return lazy_update(new_v_old, u_old, iter, t_pos, lambda, lambda_2, tau);
 			}
@@ -190,16 +199,19 @@ double lazy_update(double v_old, double u_old, int iter, int t_old,
 
 	} else {
 		if (-u_old <= -lambda) {
+			// cout << "case 5" << endl;
 			t1 = get_term1(lambda_2, tau, iter - t_old - 1);
 			// cout << "t1:" << t1 << endl;
 		} else {
-			int t_neg = get_t_neg(v_old, u_old, iter, t_old + 1, lambda, lambda_2, tau);
+			int t_neg = get_t_neg(v_old, u_old, t_old + 1, iter, lambda, lambda_2, tau);
 			// cout << "t_neg:" << t_neg << endl;
 			if (t_neg == iter) {
+				// cout << "case 6" << endl;
 				// cout << "t_neg:" << t_neg << endl;
 				t1 = get_term1(lambda_2, tau, t_neg - t_old - 1);
 			}else {
-				double new_v_old = get_v_recurse(v_old, u_old, t_neg - t_old, lambda, lambda_2, tau);
+				// cout << "case 7" << endl;
+				double new_v_old = get_v_recurse(v_old, u_old, t_neg - (t_old+1), lambda, lambda_2, tau);
 				// cout << "neg: " << new_v_old << endl;
 				// cout << v_old << endl;
 				return lazy_update(new_v_old, u_old, iter, t_neg, lambda, lambda_2, tau);
@@ -319,6 +331,32 @@ int main(int argc, char** argv){
 			int i = index[r];
 			SparseVec xi = data->at(i)->xi;
 			double yi = data->at(i)->yi;
+
+			// lazy update primal
+			for (int k = 0; k < xi.size(); k++){	
+				int idx = xi[k].first;
+				double value = xi[k].second;
+
+				double v_old = v[idx];
+				// v here is one iteration before the current v, not the oldest. And \bar{x} is linear
+				// combination of this one and the updated one. 
+				//                                    3              -1
+				v[idx] = lazy_update(v_old, u[idx], inner_iter, last_t[idx], lambda, lambda_2, tau);
+				// cout << "after lazy: " << idx << ", " << v[idx] << endl;
+
+				if (last_t[idx] == inner_iter - 1) continue;
+
+				double v_older = lazy_update(v_old, u[idx], inner_iter-1, last_t[idx], lambda, lambda_2, tau);
+				x_bar[idx] = v[idx] + theta * (v[idx] - v_older);
+			}
+
+
+			for (int k = 0; k < xi.size(); k++){
+				int idx = xi[k].first;
+				// cout << "x_bar used: " << last_t[idx] << "->" <<  inner_iter <<"  " << idx << ": " << x_bar[idx] << endl;
+			}
+
+
 			
 			// update dual
 			double new_alpha = (yi - dot(x_bar, xi) - (alpha[i] / sigma)) / (-1.0 - (1.0/sigma));
@@ -328,28 +366,21 @@ int main(int argc, char** argv){
 				new_alpha = min( max( new_alpha, 0.0 ) , 1.0);
 			}
 			double alpha_diff = new_alpha-alpha[i];
+			// cout << "alpha_diff" << alpha_diff << endl;
 			alpha[i] = new_alpha;
 
-			// update primal
-			// for (int j = 0; j < D; ++j) {
-			// 	v_new[j] = (v[j] / tau - u[j]) / (lambda_2 + 1.0/tau);
-			// }
+
+			// update primal			
 			double threshold = lambda / (lambda_2 + 1.0/tau);
 			for (int k = 0; k < xi.size(); k++){
 				
 				int idx = xi[k].first;
 				double value = xi[k].second;
-				if (inner_iter - last_t[idx] > 1) {
-					v_new[idx] = lazy_update(v[idx], u[idx], inner_iter, last_t[idx], lambda, lambda_2, tau);
-				} else {
-					v_new[idx] = v[idx];
-				}
-
-				last_t[idx] = inner_iter;	
-				// cout << idx << "->" << iter << endl;			
-				v_new[idx] = (v_new[idx] / tau - u[idx]) / (lambda_2 + 1.0/tau);
+				v_new[idx] = (v[idx] / tau - u[idx]) / (lambda_2 + 1.0/tau);
 				v_new[idx] -= alpha_diff * value / (lambda_2 + 1.0/tau);
-				v_new[idx] = prox_l1(v_new[idx], threshold);
+
+				v_new[idx] = prox_l1( v_new[idx], threshold);
+				last_t[idx] = inner_iter;
 			}
 
 			// maintain u
@@ -362,29 +393,26 @@ int main(int argc, char** argv){
 			}
 
 			// maintain x_bar
-			// for (int j = 0; j < D; ++j) {
-			// 	x_bar[j] = v_new[j] + theta * (v_new[j] - v[j]);
-			// 	v[j] = v_new[j];
-			// }
 			for (int k = 0; k < xi.size(); k++){
 				
 				int idx = xi[k].first;
 				x_bar[idx] = v_new[idx] + theta * (v_new[idx] - v[idx]);
 				v[idx] = v_new[idx];
 			}
-			// for (int j = 0; j < D; ++j) {
-			// 	cout << v[j] << endl;
-			// }
-			// cout << endl;
-			// for (int k = 0; k < xi.size(); k++){
-			// 	int idx = xi[k].first;
-			// 	cout << idx << ": " << v_new[idx] << endl;
-			// }
-			// cout << endl;
+
+			for (int k = 0; k < xi.size(); ++k){
+				int idx = xi[k].first;
+				cout << u[idx] << ", ";
+			}
+			cout << endl;
+
+			if (inner_iter == 10)
+				exit(0);
+
 			inner_iter++;
+			// cerr << "iter=" << inner_iter << ", nnz_a=" << nnz(alpha, N) << endl;
 		}
 		update_time += omp_get_wtime();
-		// exit(0);
 		// for (int i = 0; i < D; ++i) {
 		// 	cout << v[i] << endl;
 		// }
